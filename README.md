@@ -55,3 +55,7 @@ chmod +x weaknet.sh
 - 仅支持 macOS(依赖系统自带的 dummynet / pf)。
 - `on` / `off` 会真实改动当前网络,需要 sudo 权限。
 - 若个别 macOS 版本 pf 语法有差异导致报错,请提交 issue。
+
+## License
+
+[MIT](LICENSE) © forrest
