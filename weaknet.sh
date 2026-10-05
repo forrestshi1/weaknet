@@ -3,7 +3,7 @@
 # weaknet.sh —— macOS 一键弱网工具
 #
 # 基于系统自带的 dnctl (dummynet) + pfctl 对「整机全部流量」做限速 / 加延迟 / 丢包。
-# 无需安装任何第三方软件。需要 sudo(脚本会自动申请)。
+# 需要 sudo(脚本会自动申请)。
 #
 # 用法:
 #   ./weaknet.sh on <preset>      开启弱网,preset 见下方列表
@@ -77,10 +77,27 @@ apply() {
   } | pfctl -q -f - 2>/dev/null
 
   # 3) 把整机进出流量导入管道
-  {
-    echo "dummynet in all pipe $PIPE_ID"
-    echo "dummynet out all pipe $PIPE_ID"
-  } | pfctl -q -a "$ANCHOR" -f - 2>/dev/null
+  #    先豁免 loopback:自动化工具(Playwright CDP / 本地 mock / 调试端口)走 127.0.0.1,
+  #    若一并限速会污染测量结果,高丢包档甚至会打断控制通道。
+  #    个别 macOS 版本不认 `no dummynet`,故失败时回退到「不豁免 lo0」并给出提示。
+  if ! printf '%s\n' \
+        "no dummynet on lo0 all" \
+        "dummynet in all pipe $PIPE_ID" \
+        "dummynet out all pipe $PIPE_ID" \
+      | pfctl -q -a "$ANCHOR" -f - 2>/dev/null; then
+    printf '%s\n' \
+        "dummynet in all pipe $PIPE_ID" \
+        "dummynet out all pipe $PIPE_ID" \
+      | pfctl -q -a "$ANCHOR" -f -
+    msg "⚠️  本机 pf 不支持 'no dummynet',已回退为限速全部流量(含 loopback)。"
+    msg "   若用自动化工具驱动本地浏览器,高丢包档可能干扰其控制通道。"
+  fi
+
+  # 3b) 校验锚点真的装上了规则(避免规则加载失败却静默"看起来开了")
+  if ! pfctl -a "$ANCHOR" -s all 2>/dev/null | grep -q dummynet; then
+    err "pf 锚点规则加载失败,弱网未生效。请运行 '$0 status' 查看详情。"
+    exit 1
+  fi
 
   # 4) 启用 pf(记录 token,off 时精确释放,不影响别人开的 pf)
   if [ ! -f "$TOKEN_FILE" ]; then

@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-git clone git@github.com:forrestshi1/weaknet.git
+git clone git@github.com:forrestshi1/weaknet.git（如果是本地文件夹则不用git clone）
 cd weaknet
 chmod +x weaknet.sh
 ```
@@ -54,6 +54,11 @@ chmod +x weaknet.sh
 
 - 仅支持 macOS(依赖系统自带的 dummynet / pf)。
 - `on` / `off` 会真实改动当前网络,需要 sudo 权限。
+- **loopback(lo0) 默认豁免**:自动化工具(Playwright CDP、本地 mock、调试端口)走
+  127.0.0.1,若一并限速会污染测量结果,高丢包档甚至会打断控制通道。个别 macOS
+  版本不认 `no dummynet` 语法,脚本会自动回退为「限速全部流量」并打印提示。
+- 规则加载后会校验锚点里确实有 dummynet 规则,加载失败会**报错退出**,不会出现
+  「显示已开启、实际没限速」的静默失效。
 - 若个别 macOS 版本 pf 语法有差异导致报错,请提交 issue。
 
 ## License
